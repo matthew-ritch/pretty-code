@@ -1,0 +1,1 @@
+This repository houses the code I use to algorithmically generate images and videos!
