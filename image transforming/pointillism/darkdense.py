@@ -11,9 +11,9 @@ import imageio
 from scipy.ndimage import gaussian_filter as gfilt
 
 #params
-imageName = "cityscape.jpg"
+imageName = "libnan.jpg"
 maxScale = .005
-minScale = .001
+minScale = .0002
 nNeighbors = 3
 #ni=2/np.max(minScale,maxScale)
 #read in image
@@ -98,7 +98,7 @@ while queue:
 
 
 # #get fig ready
-fig=plt.figure(facecolor=(.8,.8,.8),figsize=[8,8*1.78])
+fig=plt.figure(facecolor=(.8,.8,.8),figsize=[sze[1]/100,sze[0]/100])
 plt.xlim([0,sze[1]])
 plt.ylim([0,sze[0]])
 plt.axis('off')
@@ -109,6 +109,6 @@ ax.get_yaxis().set_visible(False)
 plt.autoscale(tight=False)
 
 
-plt.scatter(sze[1]-exarray[:,1],sze[0]-exarray[:,0],c='k',s =.30)
+plt.scatter(exarray[:,1],sze[0]-exarray[:,0],c='k',s =.30)
 plt.show()
-fig.savefig("cityscape2.png", dpi=400)
+fig.savefig("curr41.png", dpi=400)

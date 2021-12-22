@@ -7,3 +7,6 @@
 *.hdf5
 *.7z
 *.wmv
+*.pyc
+*.stats
+*.tiff

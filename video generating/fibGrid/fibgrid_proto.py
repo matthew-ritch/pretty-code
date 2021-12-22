@@ -64,7 +64,7 @@ while fib_now< 2**(nBits):
     ax.get_yaxis().set_visible(False)
     mp.pyplot.autoscale(tight=False)
     mp.pyplot.imshow(im,figure=fig)
-    fig.savefig("fibgrid_proto prog/step" + '_' + str(ind) ,facecolor = 'w', dpi = 300)
+    fig.savefig("fibgrid_proto prog/step" + '_' + str(ind) ,facecolor = 'w', dpi = 150)
     im = np.asarray(scipy.misc.imread("fibgrid_proto prog/step" + '_' + str(ind)+".png")[:,:,:3]).astype('uint8')
     out.write(im[:,:,[2,1,0]])
     ind+=1
