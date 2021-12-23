@@ -23,6 +23,43 @@ from numba import jit
 
 ind=0
 #%%
+@jit(nopython=True)
+def myinsert(curve, insertion_inds, points):
+    #inserts points along first axis
+    cL=curve.shape[0]
+    iL=points.shape[0]
+    out = np.zeros((cL+iL,curve.shape[1]))
+    #sort
+    order=np.argsort(insertion_inds)
+    insertion_inds=insertion_inds[order]
+    points = points[order,:]
+    #insert
+    added_c=0
+    added_i=0
+    i=0
+    while (added_i<iL) | (added_c<cL):
+        if (added_i<iL): 
+            if(added_c == insertion_inds[added_i]):
+                out[i,:] = points[added_i,:]
+                added_i+=1
+                i+=1
+                continue
+        
+        out[i,:] = curve[added_c,:]
+        added_c+=1
+        
+        i+=1 
+    return out
+        
+@jit(nopython=True)
+def norm_along_y(array):
+    return np.sqrt(np.sum(np.square(array),axis=1))
+@jit(nopython=True)
+def norm_along_z(array):
+    return np.sqrt(np.sum(np.square(array),axis=2))
+
+#%%
+
 def init_circle(center, radius, n_nodes):
     """
     makes initial curve with certain parameters
@@ -34,7 +71,7 @@ def init_circle(center, radius, n_nodes):
     
     return circle
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def grow_curve(curve, p_add = .1):
     """
     maybe adjust all points while we're at it? 
@@ -45,26 +82,28 @@ def grow_curve(curve, p_add = .1):
     insertion_inds = (np.random.rand(len(insertion_inds))*insertion_inds[0]*.5).astype(int)+insertion_inds
     insertion_inds= insertion_inds % L
     points = (curve[insertion_inds,:] + curve[insertion_inds+1,:]) * 0.5
-    curve = np.insert(curve, insertion_inds+1, points, axis = 0)
-    
+    #curve = np.insert(curve, insertion_inds+1, points, axis = 0)
+    curve = myinsert(curve, insertion_inds+1, points)
     return curve
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def grow_curve_close(curve, p_add = .2):
     """
     maybe adjust all points while we're at it? 
     will probably be more efficient than kicking it to the evolution step
     """
     L = curve.shape[0]
-    n = np.linalg.norm(curve, axis = 1)
+    #n = np.linalg.norm(curve, axis = 1)
+    n = norm_along_y(curve)
     inds = np.argsort(n)
-    insertion_inds = inds [0:np.floor(L*p_add).astype(int)]
+    insertion_inds = inds [0:1+int(np.floor(L*p_add))]
     insertion_inds= insertion_inds % L
     points = (.5*curve[insertion_inds,:] + .5*curve[(insertion_inds+1) % L,:])
-    curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0)
+    #curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0)
+    curve = myinsert(curve, (insertion_inds+1) % L, points)
     return curve
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def grow_curve_curve(curve, p_add = .1):
     """
     maybe adjust all points while we're at it? 
@@ -72,18 +111,31 @@ def grow_curve_curve(curve, p_add = .1):
     """
     L = curve.shape[0]
     temp = curve.copy()
-    left =  np.roll(temp, shift = -1, axis=0) - temp
-    right = np.roll(temp, shift = 1, axis=0) - temp
+    # left =  np.roll(temp, shift = -1, axis=0) - temp
+    # right = np.roll(temp, shift = 1, axis=0) - temp
+    #####
+    right = curve.copy()
+    right[1:,:]=curve[0:L-1,:]
+    right[0,:]=curve[-1,:]
+    right = right - temp
+    
+    left = curve.copy()
+    left[:L-1,:]=curve[1:,:]
+    left[-1,:]=curve[0,:]
+    left = left - temp
+    
+    #####
     ###
     inds =  np.sum(left * right, axis = 1)
     inds = np.argsort(-inds)
-    insertion_inds = inds [0:np.floor(L*p_add).astype(int)]
+    insertion_inds = inds [0:1+int(np.floor((L*p_add)))]
     insertion_inds= insertion_inds % L
     points = (.5*curve[insertion_inds,:] + .5*curve[(insertion_inds+1) % L,:])
-    curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0) 
+    #curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0) 
+    curve = myinsert(curve, (insertion_inds+1) % L, points)
     return curve
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def grow_curve_length(curve, p_add = .05):
     """
     maybe adjust all points while we're at it? 
@@ -91,17 +143,22 @@ def grow_curve_length(curve, p_add = .05):
     """
     L = curve.shape[0]
     temp = curve.copy()
-    right = np.roll(temp, shift = 1, axis=0) - temp
-    dists = np.linalg.norm(right, axis=1)   
+    #right = np.roll(temp, shift = 1, axis=0) - temp
+    temp[1:,:]=curve[0:L-1,:]
+    temp[0,:]=curve[-1,:]
+    right = temp-curve
+    #dists = np.linalg.norm(right, axis=1)   
+    dists = norm_along_y(right)   
     
     inds = np.argsort(-dists)
-    insertion_inds = inds [0:np.floor(L*p_add).astype(int)]
+    insertion_inds = inds [0:1+int(np.floor(L*p_add))]
     insertion_inds= insertion_inds % L
     points = (.5*curve[insertion_inds,:] + .5*curve[(insertion_inds+1) % L,:])
-    curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0)   
+    #curve = np.insert(curve, (insertion_inds+1) % L, points, axis = 0) 
+    curve = myinsert(curve, (insertion_inds+1) % L, points)
     return curve
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def calc_forces(curve, center):
     """
     :)
@@ -112,13 +169,16 @@ def calc_forces(curve, center):
     collision_forces = np.zeros(curve.shape)    
     #%% calc center force
     curve = curve - center
-    dists = np.linalg.norm(curve, axis=1)
-    cent_forces = np.stack((curve[:,0] * dists, curve[:,1] * dists) , 1)
+    #dists = np.linalg.norm(curve, axis=1)
+    dists = norm_along_y(curve)
+    cent_forces = 1*np.stack((curve[:,0] * dists, curve[:,1] * dists) , 1)
     
-    #calc spiral force
-    spiral_f=1*cent_forces[:,[1,0]]
-    spiral_f[:,1]=-1*spiral_f[:,1]
-        
+    #add spiral
+    spiral_f=np.zeros((n_nodes,2))
+    spiral_f[:,1]=-1*cent_forces[:,0]
+    spiral_f[:,0]=cent_forces[:,1]
+    cent_forces+=.2*spiral_f
+    
     #%%calc neighbor forces
     #want the points to remain the heuristic distance apart- normed to 1 unit distance earlier
     for i in range(n_nodes):
@@ -130,6 +190,7 @@ def calc_forces(curve, center):
         #calculate distance
         left_dist = np.linalg.norm(left_neighbor_vec)
         right_dist = np.linalg.norm(right_neighbor_vec)
+        
         #calculate force. positive forces point away from neighbor
         left_force = (left_dist - 1) * left_neighbor_vec
         right_force = (right_dist - 1) * right_neighbor_vec
@@ -140,23 +201,25 @@ def calc_forces(curve, center):
     #TODO optimize
     # #get pairwise difference vectors (upper triangle)
     #new method
-    x_posn = curve[:,0,np.newaxis]
-    y_posn = curve[:,1,np.newaxis]
-    x_grid = np.repeat(x_posn, n_nodes, axis=1)
-    y_grid = np.repeat(y_posn, n_nodes, axis=1)
+    x_posn = curve[:,0]
+    y_posn = curve[:,1]
+    x_grid = np.reshape(np.repeat(x_posn, n_nodes),(n_nodes, n_nodes))
+    y_grid = np.reshape(np.repeat(y_posn, n_nodes),(n_nodes, n_nodes))
     pair_diffs_x = x_grid - np.transpose(x_grid)
     pair_diffs_y = y_grid - np.transpose(y_grid)   
     
     diffs=np.stack((pair_diffs_x, pair_diffs_y), axis=2)
-    dists = np.linalg.norm(diffs, axis=2)
-    
-    for i in range(n_nodes):
-        dists[i,(i-1)%n_nodes]=0
-        dists[i,(i+1)%n_nodes]=0
-    
+    #dists = np.linalg.norm(diffs, axis=2)
+    dists = norm_along_z(diffs)
+      
     #calculate forces (inverse square)
     f_mags = 1/(np.square(dists))
-    f_mags[~np.isfinite(f_mags)] = 0
+    #f_mags[~np.isfinite(f_mags)] = 0
+    for i in range(n_nodes):
+        f_mags[i,(i-1)%n_nodes]=0
+        f_mags[i,(i)%n_nodes]=0
+        f_mags[i,(i+1)%n_nodes]=0
+    
     f_x = diffs[:,:,0] * f_mags
     f_y = diffs[:,:,1] * f_mags
     #vector points from other point to point force acts on. 
@@ -168,13 +231,13 @@ def calc_forces(curve, center):
     ###########
     
     #sum force components
-    forces = -.25*cent_forces + 4*n_forces + 1*collision_forces + .2*spiral_f
+    forces = -.25*cent_forces + 4*n_forces + 1*collision_forces
     return forces
 #%%
-#@jit(nopython=True)
+@jit(nopython=True)
 def evolve_curve(curve, evolve_steps, center): 
     global ind
-    n_points = curve.shape[0]  
+    #n_points = curve.shape[0]  
     for i in range(evolve_steps):
         forces = calc_forces(curve, center)
         steps = 0.001 * forces
