@@ -126,38 +126,40 @@ def calc_forces(curve, center):
         #TODO right force is negative of circular shift left force. optimize.
         n_forces [i,:] = -1*(left_force + right_force)
         
-    #%%calcs collision forces 
+    #%%calcs collision forces
     #TODO optimize
-    #get pairwise difference vectors (upper triangle)
-    pair_diffs_x = np.zeros((n_nodes,n_nodes))
-    pair_diffs_y = np.zeros((n_nodes,n_nodes))
-    for i in range(n_nodes - 1):
-        for j in np.arange(i+2, n_nodes):
-            pair_diffs_x [i, j] = curve[i,0] - curve[j,0]
-            pair_diffs_y [i, j] = curve[i,1] - curve[j,1]
+    # #get pairwise difference vectors (upper triangle)
+    #new method
+    x_posn = curve[:,0,np.newaxis]
+    y_posn = curve[:,1,np.newaxis]
+    x_grid = np.repeat(x_posn, n_nodes, axis=1)
+    y_grid = np.repeat(y_posn, n_nodes, axis=1)
+    pair_diffs_x = x_grid - np.transpose(x_grid)
+    pair_diffs_y = y_grid - np.transpose(y_grid)   
     
     diffs=np.stack((pair_diffs_x, pair_diffs_y), axis=2)
-    diffs[-1,0,:] = 0
-    diffs[0,-1,:] = 0
-    
     dists = np.linalg.norm(diffs, axis=2)
+    
+    for i in range(n_nodes):
+        dists[i,(i-1)%n_nodes]=0
+        dists[i,(i+1)%n_nodes]=0
     
     #calculate forces (inverse square)
     f_mags = 1/(np.square(dists))
     f_mags[~np.isfinite(f_mags)] = 0
     f_x = diffs[:,:,0] * f_mags
     f_y = diffs[:,:,1] * f_mags
-    #equal opposite reaction
-    f_x = f_x - np.transpose (f_x)
-    f_y = f_y - np.transpose (f_y)
+    # #equal opposite reaction
+    # f_x = f_x - np.transpose (f_x)
+    # f_y = f_y - np.transpose (f_y)
     #vector points from other point to point force acts on. 
     #pos vector means positive force on point.
     #sum up along rows.
     f_x = np.sum(f_x, axis = 1)
     f_y = np.sum(f_y, axis = 1)
     collision_forces = 1* np.stack ((f_x, f_y), axis=1)
+    ###########
     
-    #remove forces from neighbors and self
     
     #sum force components
     forces = -.3*cent_forces + 1*n_forces + 3*collision_forces
