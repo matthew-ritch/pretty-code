@@ -168,7 +168,7 @@ def calc_forces(curve, center):
     ###########
     
     #sum force components
-    forces = -.25*cent_forces + 4*n_forces + 1*collision_forces + .2*spiral_f
+    forces = -.25*cent_forces + 4*n_forces + 3*collision_forces + 0*spiral_f
     return forces
 #%%
 #@jit(nopython=True)
@@ -186,7 +186,7 @@ def main():
     n_circles = 1
     center = np.asarray((0,0)) # coord will be transformed to frame coords after the shape is grown
     init_radius = 10
-    init_n_nodes = 500
+    init_n_nodes = 100
     ind=0
     
     seed=init_circle(center, init_radius, init_n_nodes)
@@ -194,7 +194,7 @@ def main():
     heur_dist = np.linalg.norm(seed[0,:]-seed[1,:])
     seed = seed / heur_dist
     curve = seed.copy()
-    for i in range(100):
+    for i in range(1000):
         curve=evolve_curve(curve, 2, center)
         if (i%6 == 0):  #and (i<25):
             curve=grow_curve_length(curve, p_add = .05)

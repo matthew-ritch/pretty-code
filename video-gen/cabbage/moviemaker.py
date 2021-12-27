@@ -10,8 +10,8 @@ import numpy as np
 
 
 fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-fps = float(35)
-video_filename = './'+'spin.mp4'
+fps = float(45)
+video_filename = './'+'cabbage.mp4'
 out = cv2.VideoWriter(video_filename, fourcc, fps, (814, 814))
 
 files = glob.glob("out-2/*.png")
